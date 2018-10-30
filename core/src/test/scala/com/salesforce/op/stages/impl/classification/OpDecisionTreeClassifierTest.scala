@@ -79,12 +79,23 @@ class OpDecisionTreeClassifierTest extends OpEstimatorSpec[Prediction,
       .setMaxBins(2)
       .setMinInstancesPerNode(2)
       .setMinInfoGain(0.1)
+      .setMaxMemoryInMB(1)
+      .setCacheNodeIds(true)
+      .setCheckpointInterval(20)
+      .setImpurity(Impurity.Variance.sparkName)
+      .setSeed(42L)
+
     estimator.fit(inputData)
 
     estimator.predictor.getMaxDepth shouldBe 6
     estimator.predictor.getMaxBins shouldBe 2
     estimator.predictor.getMinInstancesPerNode shouldBe 2
     estimator.predictor.getMinInfoGain shouldBe 0.1
+    estimator.predictor.getMaxMemoryInMB shouldBe 1
+    estimator.predictor.getCacheNodeIds shouldBe true
+    estimator.predictor.getCheckpointInterval shouldBe 20
+    estimator.predictor.getImpurity shouldBe Impurity.Variance.sparkName
+    estimator.predictor.getSeed shouldBe 42L
   }
 }
 

@@ -80,6 +80,15 @@ class OpGBTClassifierTest extends OpEstimatorSpec[Prediction, OpPredictorWrapper
       .setMaxBins(2)
       .setMinInstancesPerNode(2)
       .setMinInfoGain(0.1)
+      .setMaxMemoryInMB(1)
+      .setCacheNodeIds(true)
+      .setCheckpointInterval(20)
+      .setImpurity(Impurity.Entropy.sparkName)
+      .setSubsamplingRate(0.8)
+      .setSeed(42L)
+      .setStepSize(0.2)
+      .setLossType("logistic")
+
     estimator.fit(inputData)
 
     estimator.predictor.getMaxIter shouldBe 10
@@ -87,7 +96,14 @@ class OpGBTClassifierTest extends OpEstimatorSpec[Prediction, OpPredictorWrapper
     estimator.predictor.getMaxBins shouldBe 2
     estimator.predictor.getMinInstancesPerNode shouldBe 2
     estimator.predictor.getMinInfoGain shouldBe 0.1
-
+    estimator.predictor.getMaxMemoryInMB shouldBe 1
+    estimator.predictor.getCacheNodeIds shouldBe true
+    estimator.predictor.getCheckpointInterval shouldBe 20
+    estimator.predictor.getImpurity should not be Impurity.Entropy.sparkName
+    estimator.predictor.getSubsamplingRate shouldBe 0.8
+    estimator.predictor.getSeed shouldBe 42L
+    estimator.predictor.getStepSize shouldBe 0.2
+    estimator.predictor.getLossType shouldBe "logistic"
   }
 }
 
