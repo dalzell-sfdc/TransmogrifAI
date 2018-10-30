@@ -30,6 +30,7 @@
 
 package com.salesforce.op.stages.impl.classification
 
+import com.salesforce.op.features.Feature
 import com.salesforce.op.features.types._
 import com.salesforce.op.stages.impl.PredictionEquality
 import com.salesforce.op.stages.sparkwrappers.specific.{OpPredictorWrapper, OpPredictorWrapperModel}
@@ -62,9 +63,9 @@ class OpRandomForestClassifierTest extends
       )
     )
 
-  val labelMulti = rawLabelMulti.copy(isResponse = true)
+  val labelMulti: Feature[RealNN] = rawLabelMulti.copy(isResponse = true)
 
-  val estimator = new OpRandomForestClassifier().setInput(labelMulti, featuresMulti)
+  val estimator: OpRandomForestClassifier = new OpRandomForestClassifier().setInput(labelMulti, featuresMulti)
 
   val expectedResult = Seq(
     Prediction(1.0, Array(0.0, 17.0, 3.0), Array(0.0, 0.85, 0.15)),
@@ -89,6 +90,12 @@ class OpRandomForestClassifierTest extends
       .setSubsamplingRate(0.9)
       .setNumTrees(21)
       .setSeed(2L)
+      .setMaxMemoryInMB(1)
+      .setCacheNodeIds(true)
+      .setCheckpointInterval(20)
+      .setFeatureSubsetStrategy("sqrt")
+      .setThresholds(Array(0.25, 0.5, 0.75))
+
     estimator.fit(inputData)
 
     estimator.predictor.getMaxDepth shouldBe 10
@@ -99,6 +106,10 @@ class OpRandomForestClassifierTest extends
     estimator.predictor.getSubsamplingRate shouldBe 0.9
     estimator.predictor.getNumTrees shouldBe 21
     estimator.predictor.getSeed shouldBe 2L
+    estimator.predictor.getMaxMemoryInMB shouldBe 1
+    estimator.predictor.getCacheNodeIds shouldBe true
+    estimator.predictor.getCheckpointInterval shouldBe 20
+    estimator.predictor.getFeatureSubsetStrategy shouldBe "sqrt"
+    estimator.predictor.getThresholds shouldBe Array(0.25, 0.5, 0.75)
   }
-
 }
