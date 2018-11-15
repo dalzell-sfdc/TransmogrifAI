@@ -28,60 +28,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.salesforce.op.features
+package com.salesforce.op.utils.spark
 
-import enumeratum._
+import com.salesforce.op.test.TestSparkContext
+import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, Evaluator}
+import org.junit.runner.RunWith
+import org.scalatest.FlatSpec
+import org.scalatest.junit.JUnitRunner
 
 
-/**
- * Keeps the distribution information for features
- */
-trait FeatureDistributionLike {
+@RunWith(classOf[JUnitRunner])
+class RichEvaluatorTest extends FlatSpec with TestSparkContext {
 
-  /**
-   * name of the feature
-   */
-  val name: String
+  import com.salesforce.op.utils.spark.RichEvaluator._
+  import spark.implicits._
 
-  /**
-   * map key associated with distribution (when the feature is a map)
-   */
-  val key: Option[String]
+  def evaluator: Evaluator = new BinaryClassificationEvaluator().setMetricName("areaUnderPR")
 
-  /**
-   * total count of feature seen
-   */
-  val count: Long
+  Spec(RichEvaluator.getClass) should "evaluate a dataset" in {
+    val data = spark.createDataset(Seq(0.0 -> 0.2, 0.0 -> 0.6, 1.0 -> 0.8)).toDF("label", "rawPrediction")
+    evaluator.evaluateOrDefault(data, default = 777.0) shouldBe 1.0
+  }
 
-  /**
-   * number of empties seen in feature
-   */
-  val nulls: Long
+  it should "return default metric on an empty dataset" in {
+    evaluator.evaluateOrDefault(spark.emptyDataset[(Double, Double)], default = 777.0) shouldBe 777.0
+  }
 
-  /**
-   * binned counts of feature values (hashed for strings, evenly spaced bins for numerics)
-   */
-  val distribution: Array[Double]
-
-  /**
-   * either min and max number of tokens for text data, or number of splits used for bins for numeric data
-   */
-  val summaryInfo: Array[Double]
-
-  /**
-   * feature distribution type: training or scoring
-   */
-  val `type`: FeatureDistributionType
-
-}
-
-/**
- *Feature Distribution Type
- */
-sealed trait FeatureDistributionType extends EnumEntry with Serializable
-
-object FeatureDistributionType extends Enum[FeatureDistributionType] {
-  val values = findValues
-  case object Training extends FeatureDistributionType
-  case object Scoring extends FeatureDistributionType
 }

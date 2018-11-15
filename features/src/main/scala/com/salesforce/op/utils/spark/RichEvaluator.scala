@@ -28,60 +28,44 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.salesforce.op.features
-
-import enumeratum._
+package com.salesforce.op.utils.spark
 
 
-/**
- * Keeps the distribution information for features
- */
-trait FeatureDistributionLike {
-
-  /**
-   * name of the feature
-   */
-  val name: String
-
-  /**
-   * map key associated with distribution (when the feature is a map)
-   */
-  val key: Option[String]
-
-  /**
-   * total count of feature seen
-   */
-  val count: Long
-
-  /**
-   * number of empties seen in feature
-   */
-  val nulls: Long
-
-  /**
-   * binned counts of feature values (hashed for strings, evenly spaced bins for numerics)
-   */
-  val distribution: Array[Double]
-
-  /**
-   * either min and max number of tokens for text data, or number of splits used for bins for numeric data
-   */
-  val summaryInfo: Array[Double]
-
-  /**
-   * feature distribution type: training or scoring
-   */
-  val `type`: FeatureDistributionType
-
-}
+import org.apache.spark.ml.evaluation.Evaluator
+import org.apache.spark.sql.Dataset
+import org.slf4j.LoggerFactory
 
 /**
- *Feature Distribution Type
+ * Various [[Evaluator]] helpers functions
  */
-sealed trait FeatureDistributionType extends EnumEntry with Serializable
+case object RichEvaluator {
 
-object FeatureDistributionType extends Enum[FeatureDistributionType] {
-  val values = findValues
-  case object Training extends FeatureDistributionType
-  case object Scoring extends FeatureDistributionType
+  import com.salesforce.op.utils.spark.RichDataset._
+
+  private val log = LoggerFactory.getLogger(getClass.getName.stripSuffix("$"))
+
+  /**
+   * Various [[Evaluator]] helpers functions
+   */
+  implicit class RichEvaluator(val evaluator: Evaluator) extends AnyVal {
+
+    /**
+     * Safely evaluates model output and returns a scalar metric only if the dataset is not empty,
+     * otherwise returns the default metric value.
+     *
+     * @param dataset a dataset that contains labels/observations and predictions.
+     * @param default default metric value to return if dataset is empty
+     * @return evaluated metric or default
+     */
+    def evaluateOrDefault(dataset: Dataset[_], default: => Double): Double = {
+      if (dataset.isEmpty) {
+        val defaultValue = default
+        log.warn("The dataset is empty. Returning default metric value: {}.", defaultValue)
+        defaultValue
+      }
+      else evaluator.evaluate(dataset)
+    }
+
+  }
+
 }
