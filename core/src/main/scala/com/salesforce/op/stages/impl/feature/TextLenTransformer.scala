@@ -28,37 +28,42 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.salesforce.op.stages
+package com.salesforce.op.stages.impl.feature
 
-import enumeratum.EnumEntry
-import org.apache.spark.sql.types.Metadata
+import com.salesforce.op.UID
+import com.salesforce.op.features.types.{OPVector, TextList, _}
+import com.salesforce.op.stages.base.sequence.SequenceTransformer
+import com.salesforce.op.utils.spark.{OpVectorColumnMetadata, OpVectorMetadata}
+import org.apache.spark.ml.linalg.Vectors
 
-package object impl {
+import scala.reflect.runtime.universe.TypeTag
 
-  /**
-   * Enumeration of possible models in Model Selectors
-   */
-  trait ModelsToTry extends EnumEntry with Serializable
+/**
+ * Sequence transformer for generating a sequence of text lengths from a sequence of TextList values (eg. tokenized
+ * raw text)
+ */
+class TextLenTransformer[T <: TextList](uid: String = UID[TextLenTransformer[_]])
+  (implicit tti: TypeTag[T], val ttiv: TypeTag[T#Value])
+  extends SequenceTransformer[T, OPVector](operationName = "textLen", uid = uid)
+    with VectorizerDefaults with TextTokenizerParams with TextParams {
 
-  trait MetadataLike {
-
-    /**
-     * Converts to [[Metadata]]
-     *
-     * @throws RuntimeException in case of unsupported value type
-     * @return [[Metadata]] metadata
-     */
-    def toMetadata(): Metadata = toMetadata(skipUnsupported = false)
-
-    /**
-     * Converts to [[Metadata]]
-     *
-     * @param skipUnsupported skip unsupported values
-     * @throws RuntimeException in case of unsupported value type
-     * @return [[Metadata]] metadata
-     */
-    def toMetadata(skipUnsupported: Boolean): Metadata
-
+  override def transformFn: Seq[T] => OPVector = in => {
+    val output = in.map(_.value.map(_.length).sum.toDouble)
+    Vectors.dense(output.toArray).toOPVector
   }
 
+  override def onGetMetadata(): Unit = {
+    super.onGetMetadata()
+    val tf = getTransientFeatures()
+    val colMeta = tf.map(f => new OpVectorColumnMetadata(
+      parentFeatureName = Seq(f.name),
+      parentFeatureType = Seq(f.typeName),
+      grouping = Some(f.name),
+      descriptorValue = Option(OpVectorColumnMetadata.TextLenString)
+    ))
+
+    setMetadata(
+      OpVectorMetadata(vectorOutputName, colMeta, Transmogrifier.inputFeaturesToHistory(tf, stageName)).toMetadata
+    )
+  }
 }
